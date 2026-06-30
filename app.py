@@ -15,6 +15,8 @@ from textual.screen import Screen
 from textual import work
 from textual.css.query import NoMatches
 import asyncio
+import sys
+import getpass
 from toss_api import TossAPIClient, MOCK_STOCKS
 
 # ──────────────────────────────────────────────────
@@ -250,7 +252,7 @@ class QuotePanel(Static):
     @work(exclusive=True)
     async def refresh_quotes(self):
         api: TossAPIClient = self.app.api
-        quotes = await api.get_all_quotes()
+        quotes = await asyncio.to_thread(api.get_all_quotes)
 
         tbl = self.query_one("#quote-table", DataTable)
         tbl.clear()
@@ -331,7 +333,7 @@ class PortfolioPanel(Static):
     @work(exclusive=True)
     async def refresh_portfolio(self):
         api: TossAPIClient = self.app.api
-        portfolio = await api.get_portfolio()
+        portfolio = await asyncio.to_thread(api.get_portfolio)
 
         tbl = self.query_one("#portfolio-table", DataTable)
         tbl.clear()
@@ -411,7 +413,7 @@ class OrderPanel(Static):
     @work(exclusive=True)
     async def refresh_order_quotes(self):
         api: TossAPIClient = self.app.api
-        quotes = await api.get_all_quotes()
+        quotes = await asyncio.to_thread(api.get_all_quotes)
         tbl = self.query_one("#order-quote-table", DataTable)
         tbl.clear()
         for ticker, q in quotes.items():
@@ -425,7 +427,7 @@ class OrderPanel(Static):
 
         # 차트 (삼성전자 기본)
         ticker = self.query_one("#inp-ticker", Input).value or "005930"
-        candles = await api.get_candles(ticker, 40)
+        candles = await asyncio.to_thread(api.get_candles, ticker, 40)
         closes  = [c["close"] for c in candles]
         chart   = spark_bar(closes, width=40, height=8)
         name    = quotes.get(ticker, {}).get("name", ticker)
@@ -458,7 +460,11 @@ class OrderPanel(Static):
 
         result_widget.update("[yellow]주문 처리 중...[/]")
         api: TossAPIClient = self.app.api
-        res = await api.place_order(ticker, side, qty, price)
+        try:
+            res = await asyncio.to_thread(api.place_order, ticker, side, qty, price)
+        except Exception as e:
+            result_widget.update(f"[red]주문 실패: {e}[/]")
+            return
 
         color = "red" if side == "매수" else "blue"
         result_widget.update(
@@ -491,7 +497,7 @@ class HistoryPanel(Static):
     @work(exclusive=True)
     async def refresh_history(self):
         api: TossAPIClient = self.app.api
-        orders = await api.get_orders()
+        orders = await asyncio.to_thread(api.get_orders)
         tbl = self.query_one("#history-table", DataTable)
         tbl.clear()
         for o in orders:
@@ -523,9 +529,9 @@ class TossTUI(App):
 
     current_tab = reactive("quote")
 
-    def __init__(self):
+    def __init__(self, api: TossAPIClient | None = None):
         super().__init__()
-        self.api = TossAPIClient()
+        self.api = api or TossAPIClient(mock=True)
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
@@ -547,7 +553,11 @@ class TossTUI(App):
             self.query_one(f"#{pid}").display = False
 
         # API 초기화
-        ok = await self.api.authorize()
+        try:
+            await asyncio.to_thread(self.api.authorize)
+        except Exception as e:
+            self.api.is_mock = True
+            self.notify(f"인증 실패 → MOCK 모드: {e}", severity="error")
         mode = "[yellow]MOCK 모드[/]" if self.api.is_mock else "[green]LIVE 모드[/]"
         self.query_one("#status-bar", Static).update(
             f" 토스증권 TUI  |  {mode}  |  "
@@ -581,5 +591,25 @@ class TossTUI(App):
             event.stop()
 
 
+def build_client() -> TossAPIClient:
+    """실행 시 Secret Key 를 안전하게 입력받아 클라이언트 생성.
+    --mock 인자 또는 입력을 비우면 MOCK 모드."""
+    if "--mock" in sys.argv:
+        print("● MOCK 모드로 실행합니다 (실제 주문 없음).")
+        return TossAPIClient(mock=True)
+
+    print("토스증권 TUI — LIVE 모드")
+    print("  API Key(client_id): 코드 기본값 또는 TOSS_CLIENT_ID 환경변수 사용")
+    print("  Secret Key 는 화면에 표시되지 않습니다. (Enter 만 누르면 MOCK 모드)")
+    try:
+        secret = getpass.getpass("🔑 Secret Key 입력: ").strip()
+    except (KeyboardInterrupt, EOFError):
+        secret = ""
+    if not secret:
+        print("● Secret 미입력 → MOCK 모드로 실행합니다.")
+        return TossAPIClient(mock=True)
+    return TossAPIClient(client_secret=secret, mock=False)
+
+
 if __name__ == "__main__":
-    TossTUI().run()
+    TossTUI(api=build_client()).run()
