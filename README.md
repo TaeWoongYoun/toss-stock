@@ -53,7 +53,7 @@
 # 1. 의존성 설치
 pip install httpx textual
 
-# 2. 실행 — 실행 즉시 Secret Key 입력 프롬프트가 뜹니다
+# 2. 실행 — 실행 즉시 API Key / Secret Key 입력 프롬프트가 뜹니다
 python cli.py
 
 # (선택) API 키 없이 가상 데이터로 체험
@@ -61,6 +61,7 @@ python cli.py --mock
 ```
 
 ```text
+🪪 API Key(client_id) 입력: tsck_live_...
 🔑 Secret Key 입력: ********        ← 화면에 표시되지 않습니다
 ━━ 화면 설정 ━━
   테마 선택 [1]: 3   (회사용 흑백)
@@ -76,9 +77,15 @@ python cli.py --mock
 
 > 💵 **실제 돈이 오가는 LIVE 트레이딩** 도구입니다. 보안을 최우선으로 설계했습니다.
 
-- **Secret Key 는 코드 · 파일 · 환경변수 · git 어디에도 저장하지 않습니다.** 실행 시 `getpass` 로
-  입력받아 **화면 비표시 · 메모리에만** 보관합니다. (명령 히스토리에도 남지 않음)
-- **API Key(client_id)** 는 상대적으로 덜 민감해 기본값으로 두었으나, 환경변수 `TOSS_CLIENT_ID` 로 덮어쓸 수 있습니다.
+- **API Key · Secret Key 모두 코드에 하드코딩하지 않습니다.** 실행 시 입력받으며,
+  특히 **Secret Key 는 `getpass` 로 화면 비표시 · 메모리에만** 보관합니다. (명령 히스토리에도 남지 않음)
+- 매번 입력이 번거로우면 환경변수로 주입할 수 있습니다 (이 경우 프롬프트 생략):
+  ```bash
+  # Windows (PowerShell)
+  $env:TOSS_CLIENT_ID="..."; $env:TOSS_CLIENT_SECRET="..."; python cli.py
+  # macOS / Linux
+  TOSS_CLIENT_ID=... TOSS_CLIENT_SECRET=... python cli.py
+  ```
 - **모든 매수 · 매도 · 정정 · 취소는 전송 전 내용을 보여주고 `y/N` 확인**을 받습니다.
 - 주문 시 코드/티커가 **실제 어떤 종목인지 API 로 재확인**해 보여주어 오주문을 막습니다.
 - 국장 종목을 **장 시간 외**에 주문하면 사전 경고합니다.

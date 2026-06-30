@@ -29,8 +29,8 @@ import httpx
 
 BASE_URL = "https://openapi.tossinvest.com"
 
-# 사용자가 공유한 API Key (덜 민감). 환경변수 TOSS_CLIENT_ID 가 있으면 그것을 우선 사용.
-DEFAULT_CLIENT_ID = "tsck_live_hAVDHLehDKDfeB6EtseqOx"
+# 보안상 API Key / Secret 은 코드에 두지 않습니다.
+# client_id 는 생성 시 인자로 전달하거나 환경변수 TOSS_CLIENT_ID 로 주입합니다.
 
 
 # ──────────────────────────────────────────────
@@ -106,7 +106,7 @@ class TossAPIClient:
     def __init__(self, client_id: Optional[str] = None,
                  client_secret: Optional[str] = None,
                  mock: Optional[bool] = None):
-        self.client_id = client_id or os.getenv("TOSS_CLIENT_ID") or DEFAULT_CLIENT_ID
+        self.client_id = client_id or os.getenv("TOSS_CLIENT_ID") or ""
         self.client_secret = client_secret or os.getenv("TOSS_CLIENT_SECRET") or ""
         # mock 미지정 시: secret 없으면 Mock
         self.is_mock = (not self.client_secret) if mock is None else mock

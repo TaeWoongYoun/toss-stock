@@ -9,6 +9,7 @@
 - 모든 매수/매도/정정/취소는 실행 전 내용을 보여주고 확인을 받습니다. (실제 돈)
 """
 
+import os
 import re
 import sys
 import getpass
@@ -230,14 +231,24 @@ def login(mock: bool) -> TossAPIClient:
         client.authorize()
         return client
 
-    print(f"API Key(client_id): {GRY}코드 기본값 또는 TOSS_CLIENT_ID 환경변수 사용{RST}")
-    print(f"{GRY}Secret Key 는 화면에 표시되지 않습니다.{RST}")
-    secret = getpass.getpass(f"{Y}🔑 Secret Key 입력: {RST}").strip()
-    if not secret:
-        print(f"{R}Secret Key 가 비어 있습니다. 종료합니다.{RST}")
+    # API Key (덜 민감 → 입력은 보이게, 환경변수 있으면 생략)
+    cid = os.getenv("TOSS_CLIENT_ID")
+    if cid:
+        print(f"{GRY}API Key: 환경변수(TOSS_CLIENT_ID) 사용{RST}")
+    else:
+        cid = input(f"{Y}🪪 API Key(client_id) 입력: {RST}").strip()
+    # Secret Key (민감 → 화면 비표시)
+    secret = os.getenv("TOSS_CLIENT_SECRET")
+    if secret:
+        print(f"{GRY}Secret Key: 환경변수(TOSS_CLIENT_SECRET) 사용{RST}")
+    else:
+        print(f"{GRY}Secret Key 는 화면에 표시되지 않습니다.{RST}")
+        secret = getpass.getpass(f"{Y}🔑 Secret Key 입력: {RST}").strip()
+    if not (cid and secret):
+        print(f"{R}API Key / Secret Key 가 비어 있습니다. 종료합니다.{RST}")
         sys.exit(1)
 
-    client = TossAPIClient(client_secret=secret, mock=False)
+    client = TossAPIClient(client_id=cid, client_secret=secret, mock=False)
     try:
         print(f"{GRY}인증 중...{RST}")
         client.authorize()

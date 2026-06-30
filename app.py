@@ -15,6 +15,7 @@ from textual.screen import Screen
 from textual import work
 from textual.css.query import NoMatches
 import asyncio
+import os
 import sys
 import getpass
 from toss_api import TossAPIClient, MOCK_STOCKS
@@ -598,17 +599,19 @@ def build_client() -> TossAPIClient:
         print("● MOCK 모드로 실행합니다 (실제 주문 없음).")
         return TossAPIClient(mock=True)
 
-    print("토스증권 TUI — LIVE 모드")
-    print("  API Key(client_id): 코드 기본값 또는 TOSS_CLIENT_ID 환경변수 사용")
-    print("  Secret Key 는 화면에 표시되지 않습니다. (Enter 만 누르면 MOCK 모드)")
+    print("토스증권 TUI — LIVE 모드  (키 미입력 시 MOCK 모드)")
     try:
-        secret = getpass.getpass("🔑 Secret Key 입력: ").strip()
+        cid = os.getenv("TOSS_CLIENT_ID") or input("🪪 API Key(client_id) 입력: ").strip()
+        secret = os.getenv("TOSS_CLIENT_SECRET")
+        if not secret:
+            print("  Secret Key 는 화면에 표시되지 않습니다.")
+            secret = getpass.getpass("🔑 Secret Key 입력: ").strip()
     except (KeyboardInterrupt, EOFError):
-        secret = ""
-    if not secret:
-        print("● Secret 미입력 → MOCK 모드로 실행합니다.")
+        cid = secret = ""
+    if not (cid and secret):
+        print("● 키 미입력 → MOCK 모드로 실행합니다.")
         return TossAPIClient(mock=True)
-    return TossAPIClient(client_secret=secret, mock=False)
+    return TossAPIClient(client_id=cid, client_secret=secret, mock=False)
 
 
 if __name__ == "__main__":
