@@ -13,6 +13,7 @@ import os
 import re
 import sys
 import getpass
+import unicodedata
 from datetime import datetime
 
 from toss_api import TossAPIClient, TossAPIError, num, STATUS_KO
@@ -66,6 +67,28 @@ def apply_theme(key: str):
 
 
 apply_theme("1")  # 초기값
+
+
+# ── 한글(전각) 폭을 고려한 정렬 헬퍼 ──
+def dwidth(s) -> int:
+    return sum(2 if unicodedata.east_asian_width(c) in "WF" else 1 for c in str(s))
+
+
+def dtrunc(s, w: int) -> str:
+    out, cur = "", 0
+    for ch in str(s):
+        cw = 2 if unicodedata.east_asian_width(ch) in "WF" else 1
+        if cur + cw > w:
+            break
+        out, cur = out + ch, cur + cw
+    return out
+
+
+def dcell(s, w: int, right: bool = False) -> str:
+    """표시폭 w 에 맞춰 자르고 정렬 (전각=2칸)."""
+    s = dtrunc(s, w)
+    pad = " " * max(0, w - dwidth(s))
+    return (pad + s) if right else (s + pad)
 
 
 def won(v) -> str:
@@ -331,7 +354,8 @@ def show_holdings(client):
         print(f"{GRY}보유 종목이 없습니다.{RST}")
         return
     hr()
-    print(f"{BLD}{'종목':<14}{'수량':>8}{'평균가':>11}{'현재가':>11}{'평가금액':>13}{'손익':>12}{'수익률':>9}{RST}")
+    print(BLD + dcell("종목", 14) + f"{'수량':>7}{'평균가':>10}{'현재가':>10}"
+          + f"{'평가금액':>12}{'손익':>12}{'수익률':>9}" + RST)
     hr()
     tot_val = tot_pl = 0
     for it in items:
@@ -341,9 +365,9 @@ def show_holdings(client):
         tot_val += val
         tot_pl += pl
         col = sign_color(pl)
-        name = (it.get("name") or it.get("symbol"))[:13]
-        print(f"{name:<14}{won(it.get('quantity')):>8}{won(it.get('averagePurchasePrice')):>11}"
-              f"{won(it.get('lastPrice')):>11}{won(val):>13}"
+        name = it.get("name") or it.get("symbol")
+        print(dcell(name, 14) + f"{won(it.get('quantity')):>7}{won(it.get('averagePurchasePrice')):>10}"
+              f"{won(it.get('lastPrice')):>10}{won(val):>12}"
               f"{col}{pl:>+12,.0f}{RST}{col}{rate:>+8.2f}%{RST}")
     hr()
     col = sign_color(tot_pl)
@@ -364,7 +388,7 @@ def show_prices(client, codes):
         chg, pct = q.get("change", 0), q.get("change_pct", 0)
         col = UP if chg >= 0 else DOWN
         sg = "+" if chg >= 0 else ""
-        print(f"  {code:<8} {BLD}{(q.get('name') or code)[:14]:<14}{RST} "
+        print(f"  {GRY}{code:<7}{RST}{BLD}{dcell(q.get('name') or code, 16)}{RST}"
               f"{won(q.get('price')):>11}  {col}{sg}{chg:,.0f} ({sg}{pct:.2f}%){RST}")
 
 
@@ -380,27 +404,27 @@ def show_ranking(client=None):
     print("  시장: 1)코스피  2)코스닥  3)통합")
     m = ask("시장 선택", "1")
     market = market_rank.MARKETS.get(m, market_rank.MARKETS["1"])
+    try:
+        count = int(ask("몇 위까지 볼까요 (1~100)", "20"))
+    except ValueError:
+        count = 20
+    count = min(100, max(1, count))
     print(f"{GRY}  불러오는 중...{RST}")
     try:
-        rows = market_rank.ranking(kind[0], market[0], count=20)
+        rows = market_rank.ranking(kind[0], market[0], count=count)
     except Exception as e:
         print(f"{R}  순위 조회 실패(네트워크?): {e}{RST}")
         return
-    print(f"\n{BLD}{C}[{market[1]}] {kind[1]} 상위 20{RST}")
+    print(f"\n{BLD}{C}[{market[1]}] {kind[1]} 상위 {count}{RST}")
     hr()
-    metric = {"value": "거래대금", "volume": "거래량", "cap": "시가총액"}.get(kind[0], "")
+    print(f"{GRY}  {'#':>2}. {dcell('종목', 18)} 코드     현재가      등락률   지표{RST}")
     for r in rows:
         pct = float(r["changePct"] or 0)
         col = UP if pct >= 0 else DOWN
-        extra = ""
-        if kind[0] == "value":
-            extra = f"  거래대금 {r['value']}"
-        elif kind[0] == "volume":
-            extra = f"  거래량 {r['volume']}"
-        elif kind[0] == "cap":
-            extra = f"  시총 {r['cap']}"
-        print(f"  {r['rank']:>2}. {BLD}{r['name'][:14]:<14}{RST} {r['code']}  "
-              f"{r['price']:>10}  {col}{pct:+.2f}%{RST}{GRY}{extra}{RST}")
+        extra = {"value": f"거래대금 {r['value']}", "volume": f"거래량 {r['volume']}",
+                 "cap": f"시총 {r['cap']}"}.get(kind[0], "")
+        print(f"  {r['rank']:>2}. {BLD}{dcell(r['name'], 18)}{RST} {GRY}{r['code']:<6}{RST} "
+              f"{r['price']:>9}  {col}{pct:>+7.2f}%{RST}  {GRY}{extra}{RST}")
     print(f"\n{GRY}  종목명을 그대로 조회/주문에 쓰면 됩니다.{RST}")
 
 
