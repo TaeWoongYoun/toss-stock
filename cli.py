@@ -17,6 +17,7 @@ from datetime import datetime
 
 from toss_api import TossAPIClient, TossAPIError, num, STATUS_KO
 from stocks import find_stocks, US_TICKERS
+import market_rank
 
 # ──────────────────────────────────────────────
 #  테마 / 모드
@@ -352,19 +353,69 @@ def show_holdings(client):
 # ──────────────────────────────────────────────
 #  2. 시세
 # ──────────────────────────────────────────────
+def show_prices(client, codes):
+    """현재가 + 등락/등락률 (API 에 없으면 전일 종가로 계산)."""
+    quotes = client.get_all_quotes(codes)
+    for code in codes:
+        q = quotes.get(code)
+        if not q:
+            print(f"  {code:<8} {GRY}조회 실패{RST}")
+            continue
+        chg, pct = q.get("change", 0), q.get("change_pct", 0)
+        col = UP if chg >= 0 else DOWN
+        sg = "+" if chg >= 0 else ""
+        print(f"  {code:<8} {BLD}{(q.get('name') or code)[:14]:<14}{RST} "
+              f"{won(q.get('price')):>11}  {col}{sg}{chg:,.0f} ({sg}{pct:.2f}%){RST}")
+
+
+def show_ranking(client=None):
+    """네이버 금융 기반 주식 순위."""
+    title("주식 순위")
+    print(f"  {GRY}(출처: 네이버 금융){RST}")
+    print("  종류: 1)거래대금  2)거래량  3)시가총액  4)상승률  5)하락률  6)인기검색")
+    k = ask("종류 선택", "1")
+    kind = market_rank.KINDS.get(k)
+    if not kind:
+        return
+    print("  시장: 1)코스피  2)코스닥  3)통합")
+    m = ask("시장 선택", "1")
+    market = market_rank.MARKETS.get(m, market_rank.MARKETS["1"])
+    print(f"{GRY}  불러오는 중...{RST}")
+    try:
+        rows = market_rank.ranking(kind[0], market[0], count=20)
+    except Exception as e:
+        print(f"{R}  순위 조회 실패(네트워크?): {e}{RST}")
+        return
+    print(f"\n{BLD}{C}[{market[1]}] {kind[1]} 상위 20{RST}")
+    hr()
+    metric = {"value": "거래대금", "volume": "거래량", "cap": "시가총액"}.get(kind[0], "")
+    for r in rows:
+        pct = float(r["changePct"] or 0)
+        col = UP if pct >= 0 else DOWN
+        extra = ""
+        if kind[0] == "value":
+            extra = f"  거래대금 {r['value']}"
+        elif kind[0] == "volume":
+            extra = f"  거래량 {r['volume']}"
+        elif kind[0] == "cap":
+            extra = f"  시총 {r['cap']}"
+        print(f"  {r['rank']:>2}. {BLD}{r['name'][:14]:<14}{RST} {r['code']}  "
+              f"{r['price']:>10}  {col}{pct:+.2f}%{RST}{GRY}{extra}{RST}")
+    print(f"\n{GRY}  종목명을 그대로 조회/주문에 쓰면 됩니다.{RST}")
+
+
 def menu_market(client):
     while True:
         title("시세")
         print("  1) 현재가   2) 호가   3) 체결내역   4) 캔들   5) 상/하한가")
-        print("  6) 종목정보   7) 매수유의   8) 📈 차트   0) 뒤로")
+        print("  6) 종목정보   7) 매수유의   8) 📈 차트   9) 🏆 순위   0) 뒤로")
         c = ask("선택")
         try:
             if c == "1":
                 codes = resolve_many(client, ask("종목명/코드 (콤마로 여러개)", "삼성전자,SK하이닉스"))
                 if not codes:
                     continue
-                for p in client.get_prices(codes):
-                    print(f"  {p['symbol']:<8} {BLD}{won(p.get('lastPrice'))}{RST} {p.get('currency','')}  {GRY}{p.get('timestamp','')}{RST}")
+                show_prices(client, codes)
             elif c == "2":
                 sym = ask_symbol(client)
                 if not sym:
@@ -415,6 +466,8 @@ def menu_market(client):
                     print(f"{G}  유의사항 없음{RST}")
                 for w in ws:
                     print(f"  {Y}⚠ {w.get('warningType')}{RST}  {w.get('startDate','')}~{w.get('endDate','')}")
+            elif c == "9":
+                show_ranking(client)
             elif c == "8":
                 sym = ask_symbol(client)
                 if not sym:
@@ -696,15 +749,17 @@ def easy_menu(client):
     print(f"  {env_badge(client)}")
     print("  1) 내 주식      2) 현재가       3) 차트")
     print("  4) 사기(매수)   5) 팔기(매도)   6) 미체결/취소")
-    print("  9) 설정         0) 종료")
+    print("  7) 🏆 순위      9) 설정         0) 종료")
     c = ask("선택")
     try:
         if c == "1":
             show_holdings(client)
         elif c == "2":
             codes = resolve_many(client, ask("종목명/코드", "삼성전자"))
-            for p in (client.get_prices(codes) if codes else []):
-                print(f"  {p['symbol']:<8} {BLD}{won(p.get('lastPrice'))}{RST} {p.get('currency','')}")
+            if codes:
+                show_prices(client, codes)
+        elif c == "7":
+            show_ranking(client)
         elif c == "3":
             sym = ask_symbol(client)
             if sym:
