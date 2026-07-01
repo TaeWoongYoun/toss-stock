@@ -354,8 +354,9 @@ def show_holdings(client):
         print(f"{GRY}보유 종목이 없습니다.{RST}")
         return
     hr()
-    print(BLD + dcell("종목", 14) + f"{'수량':>7}{'평균가':>10}{'현재가':>10}"
-          + f"{'평가금액':>12}{'손익':>12}{'수익률':>9}" + RST)
+    print(BLD + dcell("종목", 14) + dcell("수량", 7, True) + dcell("평균가", 10, True)
+          + dcell("현재가", 10, True) + dcell("평가금액", 12, True)
+          + dcell("손익", 12, True) + dcell("수익률", 9, True) + RST)
     hr()
     tot_val = tot_pl = 0
     for it in items:

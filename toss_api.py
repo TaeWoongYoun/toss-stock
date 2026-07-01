@@ -476,14 +476,22 @@ class TossAPIClient:
         ov = self.get_holdings()
         out = []
         for it in ov.get("items", []):
+            mv = it.get("marketValue", {})
+            pl = it.get("profitLoss", {})
+            # 토스 앱과 동일하게 매도비용(수수료·세금) 차감 후 값 우선 사용
+            value = mv.get("amountAfterCost")
+            value = num(value if value is not None else mv.get("amount"))
+            profit = pl.get("amountAfterCost")
+            profit = num(profit if profit is not None else pl.get("amount"))
+            rate = pl.get("rateAfterCost")
+            rate = rate if rate is not None else pl.get("rate")
             out.append({
                 "ticker": it["symbol"], "name": it.get("name", it["symbol"]),
                 "qty": num(it.get("quantity")),
                 "avg_price": num(it.get("averagePurchasePrice")),
                 "cur_price": num(it.get("lastPrice")),
-                "value": num(it.get("marketValue", {}).get("amount")),
-                "profit": num(it.get("profitLoss", {}).get("amount")),
-                "profit_pct": round(num(it.get("profitLoss", {}).get("rate")) * 100, 2),
+                "value": value, "profit": profit,
+                "profit_pct": round(num(rate) * 100, 2),
             })
         return out
 
