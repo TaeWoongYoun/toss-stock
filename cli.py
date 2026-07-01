@@ -184,6 +184,34 @@ def resolve_many(client, raw):
     return codes
 
 
+def agg_candles(candles, minutes=10):
+    """1분봉을 N분봉으로 묶기 (토스 API 는 1m/1d 만 제공)."""
+    cs = sorted(candles, key=lambda c: c.get("timestamp", ""))
+    buckets = {}
+    order = []
+    for c in cs:
+        ts = c.get("timestamp", "")
+        hourkey = ts[:13]            # YYYY-MM-DDTHH
+        mn = int(ts[14:16]) if len(ts) >= 16 and ts[14:16].isdigit() else 0
+        key = f"{hourkey}:{mn // minutes}"
+        if key not in buckets:
+            buckets[key] = []
+            order.append(key)
+        buckets[key].append(c)
+    out = []
+    for key in order:
+        g = buckets[key]
+        out.append({
+            "timestamp": g[0].get("timestamp"),
+            "openPrice": g[0].get("openPrice"),
+            "highPrice": str(max(num(x.get("highPrice")) for x in g)),
+            "lowPrice": str(min(num(x.get("lowPrice")) for x in g)),
+            "closePrice": g[-1].get("closePrice"),
+            "volume": str(sum(num(x.get("volume")) for x in g)),
+        })
+    return out
+
+
 def render_chart(candles, height=14, name="", code=""):
     """터미널 캔들 차트 (빨강=상승, 파랑=하락)."""
     cs = sorted(candles, key=lambda c: c.get("timestamp", ""))
@@ -797,12 +825,14 @@ def easy_menu(client):
         elif c == "3":
             sym = ask_symbol(client)
             if sym:
-                p = ask("기간: 1)오늘(분봉)  2)3개월(일봉)", "1")
-                itv, cnt = ("1m", 120) if p == "1" else ("1d", 60)
-                page = client.get_candles_raw(sym, itv, cnt)
+                p = ask("기간: 1)오늘(10분봉)  2)3개월(일봉)", "1")
+                if p == "1":
+                    raw = client.get_candles_raw(sym, "1m", 200).get("candles", [])
+                    candles = agg_candles(raw, 10)   # 1분봉 → 10분봉
+                else:
+                    candles = client.get_candles_raw(sym, "1d", 60).get("candles", [])
                 print()
-                print(render_chart(page.get("candles", []),
-                                   name=official_name(client, sym), code=sym))
+                print(render_chart(candles, name=official_name(client, sym), code=sym))
         elif c == "4":
             place(client, "BUY")
         elif c == "5":
