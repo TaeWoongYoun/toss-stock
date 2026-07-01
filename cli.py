@@ -360,9 +360,11 @@ def show_holdings(client):
     hr()
     tot_val = tot_pl = 0
     for it in items:
-        pl = num(it.get("profitLoss", {}).get("amount"))
-        rate = num(it.get("profitLoss", {}).get("rate")) * 100
-        val = num(it.get("marketValue", {}).get("amount"))
+        mv, pl_o = it.get("marketValue", {}), it.get("profitLoss", {})
+        # 토스 앱과 동일하게 매도비용(수수료·세금) 차감 후 값 사용
+        val = num(mv.get("amountAfterCost") if mv.get("amountAfterCost") is not None else mv.get("amount"))
+        pl = num(pl_o.get("amountAfterCost") if pl_o.get("amountAfterCost") is not None else pl_o.get("amount"))
+        rate = num(pl_o.get("rateAfterCost") if pl_o.get("rateAfterCost") is not None else pl_o.get("rate")) * 100
         tot_val += val
         tot_pl += pl
         col = sign_color(pl)
@@ -371,6 +373,13 @@ def show_holdings(client):
               f"{won(it.get('lastPrice')):>10}{won(val):>12}"
               f"{col}{pl:>+12,.0f}{RST}{col}{rate:>+8.2f}%{RST}")
     hr()
+    # 총계: overview 의 차감 후 값(krw)이 있으면 그대로 사용(가장 정확)
+    mvt = ov.get("marketValue", {}).get("amountAfterCost")
+    if isinstance(mvt, dict) and mvt.get("krw") is not None:
+        tot_val = num(mvt["krw"])
+    plt = ov.get("profitLoss", {}).get("amountAfterCost")
+    if isinstance(plt, dict) and plt.get("krw") is not None:
+        tot_pl = num(plt["krw"])
     col = sign_color(tot_pl)
     print(f"{BLD}총 평가금액 {won(tot_val)}   총 손익 {col}{tot_pl:>+,.0f}{RST}")
 
@@ -788,7 +797,9 @@ def easy_menu(client):
         elif c == "3":
             sym = ask_symbol(client)
             if sym:
-                page = client.get_candles_raw(sym, "1d", 60)
+                p = ask("기간: 1)오늘(분봉)  2)3개월(일봉)", "1")
+                itv, cnt = ("1m", 120) if p == "1" else ("1d", 60)
+                page = client.get_candles_raw(sym, itv, cnt)
                 print()
                 print(render_chart(page.get("candles", []),
                                    name=official_name(client, sym), code=sym))
