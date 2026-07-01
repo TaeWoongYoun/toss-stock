@@ -184,6 +184,15 @@ def resolve_many(client, raw):
     return codes
 
 
+def quote_head(client, sym):
+    """차트 헤더용 (종목명, 현재가, 전일대비 등락, 등락률). 현재가 메뉴와 동일 기준."""
+    try:
+        q = client.get_all_quotes([sym]).get(sym, {})
+        return (q.get("name") or sym, q.get("price"), q.get("change"), q.get("change_pct"))
+    except Exception:
+        return sym, None, None, None
+
+
 def fetch_1m_today(client, sym, max_pages=8):
     """1분봉을 페이지네이션으로 수집해 '가장 최근 거래일' 하루치만 반환."""
     collected = {}
@@ -234,8 +243,9 @@ def agg_candles(candles, minutes=10):
     return out
 
 
-def render_chart(candles, height=14, name="", code=""):
-    """터미널 캔들 차트 (빨강=상승, 파랑=하락)."""
+def render_chart(candles, height=14, name="", code="", price=None, change=None, pct=None):
+    """터미널 캔들 차트 (빨강=상승, 파랑=하락).
+    price/change/pct 를 주면 헤더에 전일대비 등락으로 표시(다른 화면과 동일 기준)."""
     cs = sorted(candles, key=lambda c: c.get("timestamp", ""))
     if not cs:
         return f"{GRY}(데이터 없음){RST}"
@@ -251,12 +261,19 @@ def render_chart(candles, height=14, name="", code=""):
         return int(round((maxP - p) / span * (height - 1)))
 
     out = []
-    first, last = C_[0], C_[-1]
-    diff = last - first
-    dcol = UP if diff >= 0 else DOWN
-    pct = (diff / first * 100) if first else 0
-    out.append(f"{BLD}{C}{name} ({code}){RST}  종가 {BLD}{last:,.0f}{RST}  "
-               f"{dcol}{diff:+,.0f} ({pct:+.2f}%){RST}  {GRY}[{n}봉]{RST}")
+    if change is not None and pct is not None:   # 전일대비(현재가 메뉴와 동일)
+        shown = price if price is not None else C_[-1]
+        dcol = UP if change >= 0 else DOWN
+        label = "전일대비"
+        head = f"{dcol}{change:+,.0f} ({pct:+.2f}%){RST}"
+    else:                                         # 폴백: 차트 구간 변동
+        shown = C_[-1]
+        diff = C_[-1] - C_[0]
+        dcol = UP if diff >= 0 else DOWN
+        label = "구간"
+        head = f"{dcol}{diff:+,.0f} ({(diff / C_[0] * 100) if C_[0] else 0:+.2f}%){RST}"
+    out.append(f"{BLD}{C}{name} ({code}){RST}  현재가 {BLD}{shown:,.0f}{RST}  "
+               f"{head}  {GRY}{label} · [{n}봉]{RST}")
 
     for r in range(height):
         cells = []
@@ -571,9 +588,10 @@ def menu_market(client):
                     cnt = 60
                 cnt = min(120, max(5, cnt))  # 5~120 으로 제한
                 page = client.get_candles_raw(sym, itv, cnt)
-                name = official_name(client, sym)
+                nm, pr, ch, pc = quote_head(client, sym)
                 print()
-                print(render_chart(page.get("candles", []), name=name, code=sym))
+                print(render_chart(page.get("candles", []), name=nm, code=sym,
+                                   price=pr, change=ch, pct=pc))
             elif c == "0":
                 return
         except Exception as e:
@@ -862,8 +880,9 @@ def easy_menu(client):
                     candles = agg_candles(raw, 10)       # → 10분봉
                 else:
                     candles = client.get_candles_raw(sym, "1d", 60).get("candles", [])
+                nm, pr, ch, pc = quote_head(client, sym)
                 print()
-                print(render_chart(candles, name=official_name(client, sym), code=sym))
+                print(render_chart(candles, name=nm, code=sym, price=pr, change=ch, pct=pc))
         elif c == "4":
             place(client, "BUY")
         elif c == "5":
