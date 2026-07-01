@@ -184,6 +184,28 @@ def resolve_many(client, raw):
     return codes
 
 
+def fetch_1m_today(client, sym, max_pages=8):
+    """1분봉을 페이지네이션으로 수집해 '가장 최근 거래일' 하루치만 반환."""
+    collected = {}
+    before = None
+    latest_date = None
+    for _ in range(max_pages):
+        page = client.get_candles_raw(sym, "1m", 200, before=before)
+        cs = page.get("candles", [])
+        if not cs:
+            break
+        dates = [(c.get("timestamp", "") or "")[:10] for c in cs]
+        if latest_date is None:
+            latest_date = max(dates)
+        for c in cs:
+            collected[c.get("timestamp")] = c
+        before = page.get("nextBefore")
+        if min(dates) < latest_date or not before:  # 이전 거래일까지 닿음 → 오늘 다 모음
+            break
+    return [c for c in collected.values()
+            if (c.get("timestamp", "") or "")[:10] == latest_date]
+
+
 def agg_candles(candles, minutes=10):
     """1분봉을 N분봉으로 묶기 (토스 API 는 1m/1d 만 제공)."""
     cs = sorted(candles, key=lambda c: c.get("timestamp", ""))
@@ -253,8 +275,11 @@ def render_chart(candles, height=14, name="", code=""):
         out.append(f"{GRY}{price:>10,.0f}{RST} │" + "".join(cells))
 
     axis = f"{' ':>10} └" + "─" * n
-    d0 = (cs[0].get("timestamp", "") or "")[:10]
-    d1 = (cs[-1].get("timestamp", "") or "")[:10]
+    t0, t1 = cs[0].get("timestamp", "") or "", cs[-1].get("timestamp", "") or ""
+    if t0[:10] == t1[:10] and len(t0) >= 16:   # 같은 날(장중) → 시:분 표시
+        d0, d1 = t0[11:16], t1[11:16]
+    else:
+        d0, d1 = t0[:10], t1[:10]
     out.append(axis)
     out.append(f"{' ':>12}{GRY}{d0}{' ' * max(1, n - len(d0) - len(d1))}{d1}{RST}")
     return "\n".join(out)
@@ -832,8 +857,9 @@ def easy_menu(client):
             if sym:
                 p = ask("기간: 1)오늘(10분봉)  2)3개월(일봉)", "1")
                 if p == "1":
-                    raw = client.get_candles_raw(sym, "1m", 200).get("candles", [])
-                    candles = agg_candles(raw, 10)   # 1분봉 → 10분봉
+                    print(f"{GRY}  불러오는 중...{RST}")
+                    raw = fetch_1m_today(client, sym)   # 하루치 1분봉
+                    candles = agg_candles(raw, 10)       # → 10분봉
                 else:
                     candles = client.get_candles_raw(sym, "1d", 60).get("candles", [])
                 print()
