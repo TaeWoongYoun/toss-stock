@@ -45,6 +45,8 @@ def _row(rank: int, s: dict) -> dict:
         "value": s.get("accumulatedTradingValueKrwHangeul", ""),
         "volume": s.get("accumulatedTradingVolume", ""),
         "cap": s.get("marketValueHangeul", ""),
+        "at": s.get("localTradedAt", ""),      # 기준 시각(당일)
+        "status": s.get("marketStatus", ""),   # OPEN / CLOSE
     }
 
 

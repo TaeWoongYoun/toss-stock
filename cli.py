@@ -454,6 +454,11 @@ def show_ranking(client=None):
         print(f"{R}  순위 조회 실패(네트워크?): {e}{RST}")
         return
     print(f"\n{BLD}{C}[{market[1]}] {kind[1]} 상위 {count}{RST}")
+    if rows:
+        at = (rows[0].get("at") or "")[:16].replace("T", " ")
+        st = {"OPEN": "장중·실시간", "CLOSE": "장마감·당일최종"}.get(rows[0].get("status"), "")
+        note = "당일 누적" if kind[0] in ("value", "volume") else "당일 기준"
+        print(f"{GRY}  기준: {at}  {st}  ({note}){RST}")
     hr()
     print(f"{GRY}  {'#':>2}. {dcell('종목', 18)} 코드     현재가      등락률   지표{RST}")
     for r in rows:
