@@ -13,9 +13,15 @@
 """
 
 import os
+import sys
 import json
 
-_DIR = os.path.dirname(os.path.abspath(__file__))
+# PyInstaller 로 빌드된 .exe 에서는 데이터 파일이 임시 폴더(_MEIPASS)에 풀립니다.
+# 일반 실행 시에는 이 소스 파일과 같은 폴더에서 읽습니다.
+if getattr(sys, "frozen", False):
+    _DIR = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(sys.executable)))
+else:
+    _DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 def _load(fname: str) -> dict:

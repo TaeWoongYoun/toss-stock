@@ -16,6 +16,15 @@ import getpass
 import unicodedata
 from datetime import datetime
 
+# 입출력 인코딩을 UTF-8 로 고정 — 한글 Windows(cp949)나 파이프/리다이렉트 환경에서
+# 한글 입력이 깨지거나, em-dash(—)·박스문자·이모지 출력 시 UnicodeEncodeError 로
+# 죽는 것을 방지. (실제 콘솔에서는 무해한 no-op)
+for _s in (sys.stdin, sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 from toss_api import TossAPIClient, TossAPIError, num, STATUS_KO
 from stocks import find_stocks, US_TICKERS
 import market_rank

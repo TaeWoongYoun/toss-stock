@@ -50,16 +50,40 @@
 
 ## 🚀 빠른 시작
 
+설치 방식은 셋 중 편한 걸 고르세요. **처음이라면 A(원클릭)** 를 추천합니다.
+
+### A. 원클릭 실행 — 가장 쉬움 ⭐
+
+파이썬만 있으면 더블클릭 한 번으로 끝. (가상환경·패키지 설치를 알아서 처리)
+
+1. 이 저장소를 **[ZIP 다운로드](../../archive/refs/heads/main.zip)** 후 압축 풀기 (또는 `git clone`)
+2. 폴더 안의 실행 파일을 더블클릭
+   - **Windows** → `start.bat`
+   - **macOS / Linux** → 터미널에서 `chmod +x start.sh && ./start.sh`
+3. 끝. 실행되면 API Key / Secret Key 입력창이 뜹니다.
+
+> 파이썬이 없다면? [python.org](https://www.python.org/downloads/) 에서 3.11+ 설치
+> (Windows는 설치 시 **"Add Python to PATH"** 체크 필수). 아니면 아래 **B(.exe)** 를 쓰세요.
+
+### B. Windows .exe — 파이썬 설치 없이
+
+파이썬조차 깔기 싫은 Windows 사용자용. **[Releases](../../releases)** 에서 `toss-stock.exe`
+를 받아 더블클릭하면 바로 실행됩니다. (종목 데이터 내장, 별도 설치 없음)
+
+> ⚠️ 서명되지 않은 파일이라 처음 실행 시 파란 **"Windows가 PC를 보호했습니다"** 창이 뜰 수 있습니다.
+> → **추가 정보 → 실행** 을 누르면 됩니다. (백신이 오탐하면 예외 등록)
+
+### C. 직접 실행 — 개발자용
+
 ```bash
-# 1. 의존성 설치
-pip install httpx textual
-
-# 2. 실행 — 실행 즉시 API Key / Secret Key 입력 프롬프트가 뜹니다
-python cli.py
-
-# (선택) API 키 없이 가상 데이터로 체험
-python cli.py --mock
+pip install -r requirements.txt   # 또는:  pip install httpx textual
+python cli.py                      # 실행 즉시 API Key / Secret Key 입력창
+python cli.py --mock              # (선택) API 키 없이 가상 데이터로 체험
 ```
+
+---
+
+실행하면 이렇게 진행됩니다:
 
 ```text
 🪪 API Key(client_id) 입력: tsck_live_...
@@ -129,6 +153,11 @@ python cli.py --mock
 
 ```
 toss-stock/
+├── start.bat          # ⭐ Windows 원클릭 실행 (더블클릭)
+├── start.sh           # ⭐ macOS/Linux 원클릭 실행
+├── build_exe.bat      # 배포자용 — dist/toss-stock.exe 빌드
+├── toss-stock.spec    # PyInstaller 빌드 설정
+├── requirements.txt   # 의존성 목록 (httpx, textual)
 ├── cli.py             # cmd 인터랙티브 CLI (메인)
 ├── app.py             # Textual TUI 대시보드
 ├── toss_api.py        # 토스증권 API 클라이언트 (실제 20개 엔드포인트 + Mock)
@@ -139,6 +168,9 @@ toss-stock/
 ├── kr_etf.json        # 국장 ETF 데이터
 └── us_stocks.json     # 미장 주식/ETF 데이터
 ```
+
+> **배포자용 — .exe 만들기**: Windows에서 `build_exe.bat` 더블클릭 → `dist\toss-stock.exe` 생성.
+> 이 파일 하나만 [Releases](../../releases)에 올리면 사용자는 B 방식으로 바로 실행할 수 있습니다.
 
 ---
 

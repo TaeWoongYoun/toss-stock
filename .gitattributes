@@ -1,0 +1,5 @@
+# 실행 스크립트 줄바꿈 고정 (플랫폼 간 클론해도 깨지지 않도록)
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+*.sh   text eol=lf
+*.py   text eol=lf

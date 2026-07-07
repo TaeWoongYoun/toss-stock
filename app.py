@@ -18,6 +18,14 @@ import asyncio
 import os
 import sys
 import getpass
+
+# 입출력 인코딩 UTF-8 고정 (cp949/파이프 환경에서 한글깨짐·UnicodeEncodeError 방지)
+for _s in (sys.stdin, sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 from toss_api import TossAPIClient, MOCK_STOCKS
 
 # ──────────────────────────────────────────────────

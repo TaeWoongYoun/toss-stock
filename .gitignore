@@ -6,12 +6,21 @@ __pycache__/
 
 # 가상환경
 .venv/
+.venv-build/
 venv/
 env/
+
+# PyInstaller 빌드 산출물
+build/
+dist/
+*.exe
 
 # 환경변수 / 비밀 (client_secret 등 절대 커밋 금지)
 .env
 *.secret
+
+# 개발용 진단 스크립트 (로컬 전용, 공개 안 함)
+debug_holdings.py
 
 # 에디터 / OS
 .vscode/
