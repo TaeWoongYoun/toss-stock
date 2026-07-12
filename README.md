@@ -81,7 +81,20 @@ python cli.py --mock              # (선택) API 키 없이 가상 데이터로 
 ● LIVE 모드 인증 성공
 ```
 
-> **API 키 발급**: 토스증권 앱 → 오픈 API 사전 신청 → 승인 후 PC 웹([tossinvest.com](https://tossinvest.com))에서 발급
+### 🪪 API 키 발급 & IP 등록 (처음 한 번)
+
+이 도구는 **본인 소유의 토스증권 오픈 API 키**로 동작합니다. 아래 두 가지를 먼저 준비하세요.
+
+1. **API 키 발급** — 토스증권 앱 → 오픈 API 사전 신청 → 승인 후 PC 웹([tossinvest.com](https://tossinvest.com))에서
+   `client_id`(API Key)와 `Secret Key` 발급
+2. **허용 IP 등록** — 발급 화면에서 API를 호출할 **공인 IP**를 등록해야 합니다.
+   보통 접속한 IP가 **자동으로 채워지니** 그대로 등록하면 됩니다.
+   - ⚠️ 등록해야 하는 건 `192.168.x.x` 같은 로컬 IP가 **아니라** 공인 IP입니다. (자동값 사용 권장)
+   - 인터넷을 바꾸거나(집↔핫스팟) 통신사 IP가 바뀌면 IP도 바뀌므로 **재등록**이 필요합니다.
+     현재 내 공인 IP는 [whatismyip.com](https://www.whatismyip.com) 에서 확인할 수 있어요.
+
+> 💡 **연결 실패(`getaddrinfo failed`)가 뜬다면?** IP 등록 문제가 아니라 **인터넷/DNS 일시 오류**입니다.
+> 잠시 후 다시 실행하거나, VPN을 끄고 시도하세요. (IP 화이트리스트 거부는 `401/403`로 표시됩니다)
 
 ---
 
