@@ -87,14 +87,25 @@ python cli.py --mock              # (선택) API 키 없이 가상 데이터로 
 
 1. **API 키 발급** — 토스증권 앱 → 오픈 API 사전 신청 → 승인 후 PC 웹([tossinvest.com](https://tossinvest.com))에서
    `client_id`(API Key)와 `Secret Key` 발급
-2. **허용 IP 등록** — 발급 화면에서 API를 호출할 **공인 IP**를 등록해야 합니다.
+2. **허용 IP 등록** — API를 호출할 **공인 IP**를 등록해야 합니다.
    보통 접속한 IP가 **자동으로 채워지니** 그대로 등록하면 됩니다.
    - ⚠️ 등록해야 하는 건 `192.168.x.x` 같은 로컬 IP가 **아니라** 공인 IP입니다. (자동값 사용 권장)
    - 인터넷을 바꾸거나(집↔핫스팟) 통신사 IP가 바뀌면 IP도 바뀌므로 **재등록**이 필요합니다.
      현재 내 공인 IP는 [whatismyip.com](https://www.whatismyip.com) 에서 확인할 수 있어요.
 
-> 💡 **연결 실패(`getaddrinfo failed`)가 뜬다면?** IP 등록 문제가 아니라 **인터넷/DNS 일시 오류**입니다.
-> 잠시 후 다시 실행하거나, VPN을 끄고 시도하세요. (IP 화이트리스트 거부는 `401/403`로 표시됩니다)
+> 🚨 **가장 흔한 실수 — IP 등록 위치 헷갈림!**
+> 허용 IP는 반드시 **오픈 API 앱(키) 관리 페이지의 "허용 IP" 항목**에 등록해야 합니다.
+> 토스 설정의 **`로그인 유지 설정`** 화면에 뜨는 기기/IP 목록은 **브라우저 로그인 세션**일 뿐,
+> **API와 전혀 무관**합니다. 거기 IP가 맞아도 API는 계속 막힙니다.
+> ([developers.tossinvest.com](https://developers.tossinvest.com) 또는 API 키 발급 페이지 → 앱 상세 → 허용 IP)
+
+#### 🩺 로그인 안 될 때 (에러별 원인)
+
+| 에러 | 원인 | 해결 |
+|---|---|---|
+| `[403] IP address not allowed` | 등록한 IP ≠ 지금 나가는 IP | **API 콘솔**(로그인 세션 화면 아님)의 허용 IP에 현재 공인 IP를 등록. 저장 후 1~5분 대기 |
+| `[401] ...` | API Key/Secret 틀림 | 키 값 재확인 (앞뒤 공백 주의) |
+| `getaddrinfo failed` | 인터넷/DNS 일시 오류 (IP 문제 아님) | 잠시 후 재실행, VPN 끄기 |
 
 ---
 
